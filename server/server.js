@@ -4,11 +4,16 @@ const connectDB = require("./config/db");
 
 dotenv.config();
 
-// Connect Database
 connectDB();
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+// Only start the server locally
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
-});
+  });
+}
+
+// Export for Vercel
+module.exports = app;
