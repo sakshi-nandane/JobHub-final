@@ -9,38 +9,31 @@ function Jobs() {
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
 
- useEffect(() => {
-  const delaySearch = setTimeout(() => {
-    fetchJobs();
-  }, 500);
+  useEffect(() => {
+    const delaySearch = setTimeout(() => {
+      fetchJobs();
+    }, 500);
 
-  return () => clearTimeout(delaySearch);
-}, [title, location]);
+    return () => clearTimeout(delaySearch);
+  }, [title, location]);
 
   const fetchJobs = async () => {
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const data = await searchJobs(
-      title || "developer",
-      location || "India"
-    );
+      const data = await searchJobs(title, location);
 
-    setJobs(data);
-
-  } catch (error) {
-    console.log(error);
-  } finally {
-    setLoading(false);
-  }
-};
+      setJobs(data);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="jobs-container">
-
-      <h2 className="jobs-title">
-  Find Your Dream Job
-</h2>
+      <h2 className="jobs-title">Find Your Dream Job</h2>
 
       <div className="search-box row">
 
@@ -50,9 +43,7 @@ function Jobs() {
             className="form-control"
             placeholder="Search Job Title"
             value={title}
-            onChange={(e) =>
-              setTitle(e.target.value)
-            }
+            onChange={(e) => setTitle(e.target.value)}
           />
         </div>
 
@@ -62,9 +53,7 @@ function Jobs() {
             className="form-control"
             placeholder="Search Location"
             value={location}
-            onChange={(e) =>
-              setLocation(e.target.value)
-            }
+            onChange={(e) => setLocation(e.target.value)}
           />
         </div>
 
@@ -79,47 +68,42 @@ function Jobs() {
 
       </div>
 
-            {loading ? (
+      {loading ? (
         <h5>Loading Jobs...</h5>
       ) : jobs.length === 0 ? (
         <h5>No Jobs Found</h5>
       ) : (
-        jobs.map((job, index) => (
-  <div
-    key={index}
-    className="job-card"
-  >
-           <h3 className="job-title">
-  {job.job_title}
-</h3>
+        jobs.map((job) => (
+          <div
+            key={job._id}
+            className="job-card"
+          >
+            <h3 className="job-title">
+              {job.title}
+            </h3>
 
-<h5 className="company-name">
-  {job.employer_name}
-</h5>
+            <h5 className="company-name">
+              {job.company}
+            </h5>
 
-<p className="location">
-  {job.job_city}, {job.job_state}, {job.job_country}
-</p>
+            <p className="location">
+              {job.location}
+            </p>
 
-<span className="badge-job">
-  {job.job_employment_type}
-</span>
+            <span className="badge-job">
+              Full Time
+            </span>
 
-<p className="salary">
-  Salary:
-  {job.job_min_salary
-    ? ` ₹${job.job_min_salary} - ₹${job.job_max_salary}`
-    : " Not Disclosed"}
-</p>
+            <p className="salary">
+              {job.description}
+            </p>
 
-<a
-  href={job.job_apply_link}
-  target="_blank"
-  rel="noreferrer"
-  className="apply-btn"
->
-  Apply Now
-</a>
+            <button
+              className="apply-btn"
+              disabled
+            >
+              Apply
+            </button>
           </div>
         ))
       )}
