@@ -2,7 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = "https://job-hub-final-q2mc.vercel.app";
+const API_URL = process.env.REACT_APP_API_URL;
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -15,24 +15,21 @@ function Login() {
 
     try {
       const res = await axios.post(
-        `${API_URL}/api/auth/login`,
+        `${API_URL}/auth/login`,
         {
           email,
           password,
         }
       );
 
-      console.log("Login Response:", res.data);
-
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
       alert("Login Successful");
-
       navigate("/dashboard");
 
     } catch (error) {
-      console.log("Login Error:", error);
+      console.log(error);
 
       alert(
         error.response?.data?.message ||
@@ -48,8 +45,8 @@ function Login() {
       <form onSubmit={handleSubmit}>
         <input
           type="email"
-          placeholder="Email"
           className="form-control mb-3"
+          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -57,17 +54,14 @@ function Login() {
 
         <input
           type="password"
-          placeholder="Password"
           className="form-control mb-3"
+          placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
 
-        <button
-          className="btn btn-primary"
-          type="submit"
-        >
+        <button className="btn btn-primary">
           Login
         </button>
       </form>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = "https://job-hub-final-q2mc.vercel.app";
+const API_URL = process.env.REACT_APP_API_URL;
 
 function Register() {
   const [name, setName] = useState("");
@@ -16,7 +16,7 @@ function Register() {
 
     try {
       await axios.post(
-        `${API_URL}/api/auth/register`,
+        `${API_URL}/auth/register`,
         {
           name,
           email,
@@ -26,6 +26,7 @@ function Register() {
 
       alert("Registration Successful");
       navigate("/login");
+
     } catch (error) {
       alert(
         error.response?.data?.message ||
@@ -63,10 +64,7 @@ function Register() {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button
-          className="btn btn-success"
-          type="submit"
-        >
+        <button className="btn btn-success" type="submit">
           Register
         </button>
       </form>
