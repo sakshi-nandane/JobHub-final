@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import API from "../services/api";
 
 function JobDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const [job, setJob] = useState(null);
 
@@ -16,21 +17,31 @@ function JobDetails() {
     fetchJob();
   }, []);
 
-  const fetchJob = async () => {
-    try {
-      const res = await API.get(`/jobs/${id}`);
-      setJob(res.data);
-    } catch (error) {
-      console.log(error);
-    }
-  };
+ const fetchJob = async () => {
+  try {
+    const res = await API.get(`/jobs/${id}`);
+    setJob(res.data);
+  } catch (error) {
+    console.log(error);
+    alert("Unable to load job details");
+  }
+};
 
   const applyJob = async () => {
     try {
       const token = localStorage.getItem("token");
 
+      if (!token) {
+        alert("Please login first");
+        return navigate("/login");
+      }
+
       if (!name || !email || !phone) {
         return alert("Please fill all fields");
+      }
+
+      if (!resume) {
+        return alert("Please upload your resume");
       }
 
       const formData = new FormData();
@@ -39,33 +50,30 @@ function JobDetails() {
       formData.append("name", name);
       formData.append("email", email);
       formData.append("phone", phone);
+      formData.append("resume", resume);
 
-      if (resume) {
-        formData.append("resume", resume);
-      }
+      await API.post("/applications", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-      await API.post(
-        "/applications",
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      alert("Applied Successfully");
+      alert("Application Submitted Successfully ✅");
 
       setName("");
       setEmail("");
       setPhone("");
       setResume(null);
 
+      navigate("/my-applications");
+
     } catch (error) {
+      console.log(error);
+
       alert(
         error.response?.data?.message ||
-        "Application Failed"
+          "Application Failed"
       );
     }
   };
@@ -80,21 +88,25 @@ function JobDetails() {
 
   return (
     <div className="container mt-5">
+      <div className="card shadow p-4">
 
-      <div className="card p-4">
+        <h2>
+  {job.title || job.job_title}
+</h2>
 
-        <h2>{job.title}</h2>
+<h5>
+  {(job.company || job.employer_name)} -
+  {" "}
+  {job.location ||
+    `${job.job_city || ""}, ${job.job_state || ""}, ${job.job_country || ""}`}
+</h5>
 
-        <h5>
-          {job.company} - {job.location}
-        </h5>
-
-        <hr />
-
-        <p>{job.description}</p>
+<p>
+  {job.description || job.job_description}
+</p>
 
         <h4 className="mb-3">
-          Application Form
+          Apply for this Job
         </h4>
 
         <input
@@ -102,9 +114,7 @@ function JobDetails() {
           className="form-control mb-3"
           placeholder="Full Name"
           value={name}
-          onChange={(e) =>
-            setName(e.target.value)
-          }
+          onChange={(e) => setName(e.target.value)}
         />
 
         <input
@@ -112,9 +122,7 @@ function JobDetails() {
           className="form-control mb-3"
           placeholder="Email Address"
           value={email}
-          onChange={(e) =>
-            setEmail(e.target.value)
-          }
+          onChange={(e) => setEmail(e.target.value)}
         />
 
         <input
@@ -122,35 +130,30 @@ function JobDetails() {
           className="form-control mb-3"
           placeholder="Phone Number"
           value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+
+        <label className="form-label">
+          Upload Resume (PDF)
+        </label>
+
+        <input
+          type="file"
+          accept=".pdf"
+          className="form-control mb-4"
           onChange={(e) =>
-            setPhone(e.target.value)
+            setResume(e.target.files[0])
           }
         />
 
-        <div className="mb-3">
-          <label className="form-label">
-            Upload Resume (PDF)
-          </label>
-
-          <input
-            type="file"
-            className="form-control"
-            accept=".pdf"
-            onChange={(e) =>
-              setResume(e.target.files[0])
-            }
-          />
-        </div>
-
         <button
-          className="btn btn-primary"
+          className="btn btn-primary w-100"
           onClick={applyJob}
         >
           Apply Now
         </button>
 
       </div>
-
     </div>
   );
 }

@@ -1,11 +1,33 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const sendEmail = require("../utils/sendEmail");
 
-// Register User
+// ================= REGISTER =================
 exports.registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+
+    // Validation
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: "Please fill all fields",
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        message: "Invalid email address",
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        message: "Password must be at least 6 characters",
+      });
+    }
 
     const userExists = await User.findOne({
       email,
@@ -17,8 +39,7 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    const hashedPassword =
-      await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       name,
@@ -26,23 +47,63 @@ exports.registerUser = async (req, res) => {
       password: hashedPassword,
     });
 
+    // ===== SEND WELCOME EMAIL =====
+    try {
+      await sendEmail(
+        email,
+        "Welcome to JobHub 🎉",
+        `
+Hello ${name},
+
+Welcome to JobHub!
+
+Your account has been created successfully.
+
+You can now login and apply for jobs using JobHub.
+
+We wish you all the best for your career.
+
+Regards,
+JobHub Team
+`
+      );
+
+      console.log("✅ Welcome Email Sent");
+
+    } catch (err) {
+      console.log("❌ Email Error:", err.message);
+    }
+
     res.status(201).json({
-      message:
-        "User Registered Successfully",
+      success: true,
+      message: "Registration Successful",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
     });
 
   } catch (error) {
+    console.log(error);
+
     res.status(500).json({
-      message: error.message,
+      success: false,
+      message: "Server Error",
     });
   }
 };
 
-// Login User
+// ================= LOGIN =================
 exports.loginUser = async (req, res) => {
   try {
-    const { email, password } =
-      req.body;
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Email and Password are required",
+      });
+    }
 
     const user = await User.findOne({
       email,
@@ -54,11 +115,10 @@ exports.loginUser = async (req, res) => {
       });
     }
 
-    const isMatch =
-      await bcrypt.compare(
-        password,
-        user.password
-      );
+    const isMatch = await bcrypt.compare(
+      password,
+      user.password
+    );
 
     if (!isMatch) {
       return res.status(400).json({
@@ -78,6 +138,8 @@ exports.loginUser = async (req, res) => {
     );
 
     res.status(200).json({
+      success: true,
+      message: "Login Successful",
       token,
 
       user: {
@@ -85,18 +147,21 @@ exports.loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        profilePic: user.profilePic,
       },
     });
 
   } catch (error) {
+    console.log(error);
+
     res.status(500).json({
-      message: error.message,
+      success: false,
+      message: "Server Error",
     });
   }
 };
 
-// Update Profile
-// Update Profile
+// ================= UPDATE PROFILE =================
 exports.updateProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -107,49 +172,49 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    // Check email already exists
     if (
       req.body.email &&
       req.body.email !== user.email
     ) {
-      const emailExists =
-        await User.findOne({
-          email: req.body.email,
-        });
+      const emailExists = await User.findOne({
+        email: req.body.email,
+      });
 
       if (emailExists) {
         return res.status(400).json({
-          message:
-            "Email already registered",
+          message: "Email already registered",
         });
       }
     }
 
-    user.name =
-      req.body.name || user.name;
-
-    user.email =
-      req.body.email || user.email;
+    user.name = req.body.name || user.name;
+    user.email = req.body.email || user.email;
 
     if (req.file) {
-      user.profilePic =
-        req.file.filename;
+      user.profilePic = req.file.filename;
     }
 
     await user.save();
 
     res.status(200).json({
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      profilePic:
-        user.profilePic,
+      success: true,
+      message: "Profile Updated",
+
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profilePic: user.profilePic,
+      },
     });
 
   } catch (error) {
+    console.log(error);
+
     res.status(500).json({
-      message: error.message,
+      success: false,
+      message: "Server Error",
     });
   }
 };

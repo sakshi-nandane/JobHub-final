@@ -1,9 +1,16 @@
 const Job = require("../models/Job");
+const axios = require("axios");
+
+const RAPID_API_KEY = process.env.RAPIDAPI_KEY;
+const RAPID_API_HOST = process.env.RAPIDAPI_HOST;
+
+// ================= GET ALL JOBS =================
 
 exports.getJobs = async (req, res) => {
   try {
-    const { title, location } = req.query;
+    const { title = "", location = "" } = req.query;
 
+    // MongoDB Jobs
     let filter = {};
 
     if (title) {
@@ -20,16 +27,83 @@ exports.getJobs = async (req, res) => {
       };
     }
 
-    const jobs = await Job.find(filter);
+    const mongoJobs = await Job.find(filter);
 
-    res.json(jobs);
+    // RapidAPI Jobs
+    let apiJobs = [];
+
+    try {
+      const response = await axios.get(
+  "https://jsearch.p.rapidapi.com/search-v2",
+  {
+    params: {
+  query: title || "Software Developer",
+  page: "1",
+  num_pages: "1",
+  country: "in",
+  date_posted: "all",
+},
+    headers: {
+      "X-RapidAPI-Key": RAPID_API_KEY,
+      "X-RapidAPI-Host": RAPID_API_HOST,
+    },
+  }
+);
+
+console.log("========== RAPID RESPONSE ==========");
+console.log(JSON.stringify(response.data, null, 2));
+
+const jobs =
+  response.data?.data?.jobs ||
+  response.data?.jobs ||
+  response.data?.results ||
+  [];
+
+
+  console.log("Is Array:", Array.isArray(jobs));
+console.log("Jobs Count:", jobs.length);
+
+apiJobs = jobs.map((job) => ({
+  _id: job.job_id || Math.random().toString(),
+  title: job.job_title || job.title,
+  company: job.employer_name || job.company,
+  location:
+    job.job_city ||
+    job.location ||
+    job.job_country ||
+    "India",
+  description:
+    job.job_description ||
+    job.description ||
+    "No Description",
+  isRapid: true,
+  applyLink:
+    job.job_apply_link ||
+    job.apply_link,
+}));
+      }
+    catch (err) {
+      console.log("========== RAPID API ERROR ==========");
+      console.log(err.response?.status);
+      console.log(err.response?.data);
+      console.log(err.message);
+    }
+
+    res.status(200).json([
+      ...mongoJobs,
+      ...apiJobs,
+    ]);
 
   } catch (err) {
+    console.log(err);
+
     res.status(500).json({
       message: err.message,
     });
   }
 };
+
+// ================= GET JOB BY ID =================
 
 exports.getJobById = async (req, res) => {
   try {
@@ -50,6 +124,8 @@ exports.getJobById = async (req, res) => {
   }
 };
 
+// ================= CREATE JOB =================
+
 exports.createJob = async (req, res) => {
   try {
     const job = await Job.create(req.body);
@@ -62,6 +138,29 @@ exports.createJob = async (req, res) => {
     });
   }
 };
+
+// ================= UPDATE JOB =================
+
+exports.updateJob = async (req, res) => {
+  try {
+    const job = await Job.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      {
+        new: true,
+      }
+    );
+
+    res.json(job);
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+// ================= DELETE JOB =================
 
 exports.deleteJob = async (req, res) => {
   try {
@@ -86,21 +185,7 @@ exports.deleteJob = async (req, res) => {
   }
 };
 
-exports.updateJob = async (req, res) => {
-  try {
-    const job = await Job.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
-
-    res.json(job);
-  } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
+// ================= SAVE JOB =================
 
 exports.saveJob = async (req, res) => {
   try {
@@ -128,15 +213,13 @@ exports.saveJob = async (req, res) => {
   }
 };
 
-exports.getSavedJobs = async (
-  req,
-  res
-) => {
+// ================= SAVED JOBS =================
+
+exports.getSavedJobs = async (req, res) => {
   try {
-    const jobs =
-      await Job.find({
-        savedBy: req.user.id,
-      });
+    const jobs = await Job.find({
+      savedBy: req.user.id,
+    });
 
     res.json(jobs);
 

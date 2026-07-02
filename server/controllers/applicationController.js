@@ -1,20 +1,26 @@
 const Application = require("../models/Application");
-const sendEmail = require("../utils/sendEmail");
 const Job = require("../models/Job");
+const sendEmail = require("../utils/sendEmail");
+
+// ================= APPLY JOB =================
 
 exports.applyJob = async (req, res) => {
   try {
     console.log("========== APPLY JOB ==========");
-    console.log("BODY:", req.body);
-    console.log("FILE:", req.file);
-    console.log("USER:", req.user);
 
-    const {
-      jobId,
-      name,
-      email,
-      phone,
-    } = req.body;
+    const { jobId, name, email, phone } = req.body;
+
+    if (!jobId || !name || !email || !phone) {
+      return res.status(400).json({
+        message: "Please fill all required fields",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: "Please upload your resume (PDF)",
+      });
+    }
 
     const existing = await Application.findOne({
       user: req.user.id,
@@ -22,23 +28,10 @@ exports.applyJob = async (req, res) => {
     });
 
     if (existing) {
-      console.log("ALREADY APPLIED");
-
       return res.status(400).json({
         message: "Already applied for this job",
       });
     }
-
-    const application = await Application.create({
-      user: req.user.id,
-      job: jobId,
-      name,
-      email,
-      phone,
-      resume: req.file
-        ? req.file.filename
-        : "",
-    });
 
     const job = await Job.findById(jobId);
 
@@ -48,28 +41,46 @@ exports.applyJob = async (req, res) => {
       });
     }
 
-    console.log("Job Found:", job.title);
-
-    await sendEmail(
+    const application = await Application.create({
+      user: req.user.id,
+      job: jobId,
+      name,
       email,
-      "Job Application Submitted Successfully",
-      `
+      phone,
+      resume: req.file.filename,
+    });
+
+    try {
+      await sendEmail(
+        email,
+        "Job Application Submitted Successfully",
+        `
 Hello ${name},
 
-Your application for ${job.title}
-at ${job.company}
+Your application for
+
+${job.title}
+
+at
+
+${job.company}
+
 has been submitted successfully.
 
-Status: Applied
+Status : Applied
 
 Thank you for using JobHub.
 
 Regards,
 JobHub Team
 `
-    );
+      );
 
-    console.log("Email Sent Successfully");
+      console.log("Application Email Sent");
+
+    } catch (err) {
+      console.log("Email Error:", err.message);
+    }
 
     res.status(201).json({
       message: "Applied Successfully",
@@ -77,7 +88,6 @@ JobHub Team
     });
 
   } catch (error) {
-    console.log("========== ERROR ==========");
     console.log(error);
 
     res.status(500).json({
@@ -85,6 +95,8 @@ JobHub Team
     });
   }
 };
+
+// ================= MY APPLICATIONS =================
 
 exports.getMyApplications = async (req, res) => {
   try {
@@ -101,6 +113,8 @@ exports.getMyApplications = async (req, res) => {
   }
 };
 
+// ================= UPDATE STATUS =================
+
 exports.updateStatus = async (req, res) => {
   try {
     const application =
@@ -113,8 +127,8 @@ exports.updateStatus = async (req, res) => {
           new: true,
         }
       )
-      .populate("job")
-      .populate("user");
+        .populate("job")
+        .populate("user");
 
     if (!application) {
       return res.status(404).json({
@@ -122,29 +136,36 @@ exports.updateStatus = async (req, res) => {
       });
     }
 
-    await sendEmail(
-      application.email,
-      `Application Status Updated - ${application.status}`,
-      `
+    try {
+      await sendEmail(
+        application.email,
+        `Application Status Updated - ${application.status}`,
+        `
 Hello ${application.name},
 
 Your application status has been updated.
 
-Job: ${application.job.title}
-Company: ${application.job.company}
+Job : ${application.job.title}
 
-New Status: ${application.status}
+Company : ${application.job.company}
+
+New Status : ${application.status}
 
 Thank you for using JobHub.
 
 Regards,
 JobHub Team
 `
-    );
+      );
 
-    console.log(
-      "Status Email Sent Successfully"
-    );
+      console.log("Status Email Sent");
+
+    } catch (err) {
+      console.log(
+        "Status Email Error:",
+        err.message
+      );
+    }
 
     res.json(application);
 
